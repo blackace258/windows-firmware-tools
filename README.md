@@ -1,37 +1,36 @@
 # windows-firmware-tools
 
-Windows-native tools for SPI BIOS / firmware work.
+Windows tools for SPI BIOS work and published SMBIOS/DMI. The git tree is the complete source. Do not look for a zip.
 
-## Complete sources
+| Directory | What it is |
+|---|---|
+| [bios-tool](bios-tool/) | Rust CLI + GUI. flashrom is a child process only. Full-chip write and erase go through the safety state machine. Dry-run returns before flashrom runs. |
+| [smbios-tool](smbios-tool/) | Rust reader for the published SMBIOS table (`GetSystemFirmwareTable` RSMB). Canonical gated DMI write: external vendor tool only, after the gates. |
+| [firmware_tool](firmware_tool/) | Python 3 stdlib image inspection, plus a mirror of the SMBIOS gates. No SPI programming. |
+| [skills/autonomous-windows-dev](skills/autonomous-windows-dev/SKILL.md) | Agent skill. Rules live in `SKILL.md`. Directory and error checks live in `references/` so they are not repeated. |
 
-**The full, verified source tree is in `windows-firmware-tools.zip`.**
+## Safety
 
-Download / expand that archive for every file (bios-tool, firmware_tool, smbios-tool). The GitHub tree is seeded with core modules; the zip is the authoritative complete package.
+Write and erase paths require an exact confirmation phrase, a verified backup, and a recovery plan. There is no `--yes` bypass. Dry-run does not spawn flashrom or a vendor utility and is not reported as `Verified`.
 
-See [SOURCES.md](SOURCES.md) for the full file list.
-
-## Packages
-
-| Folder | Language | Description |
-|--------|----------|-------------|
-| **bios-tool** | Rust | CLI + professional GUI for SPI dump / inspect / validate / **safety-gated write & erase** (flashrom backend) |
-| **firmware_tool** | Python | Read-only firmware image inspection, hashing, UEFI FV / descriptor parsing, comparison |
-| **smbios-tool** | Rust | Read-only SMBIOS/DMI acquisition and reporting (Windows API) |
-
-## Quick start (bios-tool)
+## Build on Windows
 
 ```powershell
-# Expand windows-firmware-tools.zip first
 cd bios-tool
 .\setup_windows.ps1 -Install -Build
 .\target\release\bios-tool.exe doctor
 
-# Professional GUI
 cargo build --release --features gui --bin bios-tool-gui
-.\target\release\bios-tool-gui.exe
+
+cd ..\smbios-tool
+cargo build --release
+cargo test
+
+cd ..\firmware_tool
+python -m unittest discover -s tests -v
 ```
 
-**Safety:** All write/erase paths require exact board identity confirmation phrase, verified same-board backup, and recovery plan. No `--yes` bypass.
+Live `GetSystemFirmwareTable` and flashrom need a Windows machine. Parsing, compare, and the safety gates run without hardware.
 
 ## License
 

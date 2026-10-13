@@ -3,7 +3,7 @@
 
 use crate::backend::FlashromBackend;
 use crate::domain::{
-    SafetyContext, BoardIdentity, ChipIdentity, ImageMeta, BiosToolError, Result, WriteState,
+    SafetyContext, BoardIdentity, ChipIdentity, ImageMeta, Result,
 };
 use std::path::Path;
 
@@ -43,6 +43,13 @@ impl WriteCoordinator {
 
         // 4. Recovery
         ctx.confirm_recovery(recovery_plan.to_string())?;
+
+        if dry_run {
+            // Phrase check only. Do not probe or program the chip.
+            ctx.backend_ok = true;
+            ctx.authorize_write(confirm_identity)?;
+            return Ok(ctx);
+        }
 
         // 5. Backend readiness
         let _ = self.backend.version()?;
@@ -87,15 +94,25 @@ impl WriteCoordinator {
         let expected = ctx.chip.as_ref().map(|c| c.capacity_bytes).unwrap_or(0);
         ctx.verify_backup(backup_meta, expected)?;
 
+        // For erase we still require an "image validated" step conceptually;
+        // use a synthetic zero-filled placeholder size check only on backup.
+        // Advance state by reusing validate with a dummy of correct size & Raw kind
+        // that is never written — safety still requires recovery + exact phrase.
         let dummy = ImageMeta {
             path: "ERASE_NO_IMAGE".into(),
             size: expected,
             sha256: "erase".into(),
             kind: crate::domain::ImageKind::RawFullChip,
-            notes: vec!["erase operation \u2014 no candidate image".into()],
+            notes: vec!["erase operation — no candidate image".into()],
         };
         ctx.validate_image(dummy, expected)?;
         ctx.confirm_recovery(recovery_plan.to_string())?;
+
+        if dry_run {
+            ctx.backend_ok = true;
+            ctx.authorize_write(confirm_identity)?;
+            return Ok(ctx);
+        }
 
         let _ = self.backend.version()?;
         ctx.backend_ok = true;
@@ -105,21 +122,10 @@ impl WriteCoordinator {
         let erase_result = self.backend.erase_chip()?;
         eprintln!("erase exit={}", erase_result.exit_code);
 
+        // Post-erase: we cannot verify against an image; mark success if exit 0
         let ok = erase_result.exit_code == 0;
         ctx.complete_readback(ok)?;
 
         Ok(ctx)
-    }
-
-    /// Mock-friendly path for tests: never touches hardware when dry_run or mock flag.
-    pub fn execute_write_mocked(
-        &self,
-        ctx: &mut SafetyContext,
-        confirm_identity: &str,
-    ) -> Result<()> {
-        ctx.authorize_write(confirm_identity)?;
-        ctx.begin_writing()?;
-        ctx.complete_readback(true)?;
-        Ok(())
     }
 }

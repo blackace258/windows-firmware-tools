@@ -1,2 +1,0 @@
-Complete sources are in windows-firmware-tools.zip (see project artifacts).
-This repository tree is seeded with core bios-tool modules; expand the zip for the full tree including firmware_tool and smbios-tool.

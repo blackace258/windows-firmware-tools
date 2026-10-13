@@ -22,6 +22,7 @@ pub enum ChipConfidence {
 
 impl Default for ChipIdentity {
     fn default() -> Self {
+        // MX25L25673G family is 256 Mbit = 32 MiB, 3-V-class, but treat as provisional.
         Self {
             vendor: "Macronix".into(),
             part_number: "MX25L25673G (provisional)".into(),

@@ -9,7 +9,7 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1100.0, 720.0])
             .with_min_inner_size([800.0, 560.0])
-            .with_title("bios-tool \u2014 SPI BIOS Controlled Programming"),
+            .with_title("bios-tool — SPI BIOS Controlled Programming"),
         ..Default::default()
     };
 

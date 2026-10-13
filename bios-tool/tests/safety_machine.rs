@@ -1,18 +1,17 @@
-//! Integration-style tests for the write safety state machine (no hardware).
+use bios_tool::domain::safety::{SafetyContext, WriteState};
+use bios_tool::domain::{BoardIdentity, ChipIdentity, ImageMeta, ImageKind, IdentityConfidence, ChipConfidence};
 
-use bios_tool::domain::{
-    SafetyContext, WriteState, BoardIdentity, ChipIdentity,
-    IdentityConfidence, ChipConfidence, ImageMeta, ImageKind, BiosToolError,
-};
+// Re-export path assumes lib; for binary crate we test via public modules or integrate as unit tests.
+// These are conceptual integration-style tests; adjust if compiled as bin-only.
 
 #[test]
-fn starts_unidentified() {
+fn state_starts_unidentified() {
     let ctx = SafetyContext::new(false);
     assert!(matches!(ctx.state, WriteState::Unidentified));
 }
 
 #[test]
-fn blocks_provisional_board() {
+fn blocks_on_provisional_board() {
     let mut ctx = SafetyContext::new(false);
     let board = BoardIdentity {
         manufacturer: "Gigabyte".into(),
@@ -29,12 +28,13 @@ fn blocks_provisional_board() {
         confidence: ChipConfidence::OperatorSupplied,
         probe_raw: None,
     };
-    assert!(ctx.identify(board, chip).is_err());
+    let r = ctx.identify(board, chip);
+    assert!(r.is_err());
     assert!(matches!(ctx.state, WriteState::Blocked { .. }));
 }
 
 #[test]
-fn happy_path_to_authorized_then_dry_run() {
+fn full_happy_path_dry_run() {
     let mut ctx = SafetyContext::new(true);
     let board = BoardIdentity {
         manufacturer: "Gigabyte".into(),
@@ -53,23 +53,24 @@ fn happy_path_to_authorized_then_dry_run() {
     };
     ctx.identify(board.clone(), chip).unwrap();
     let backup = ImageMeta {
-        path: "b.bin".into(),
+        path: "backup.bin".into(),
         size: 32 * 1024 * 1024,
-        sha256: "a".into(),
+        sha256: "abc".into(),
         kind: ImageKind::RawFullChip,
         notes: vec![],
     };
     ctx.verify_backup(backup, 32 * 1024 * 1024).unwrap();
     let image = ImageMeta {
-        path: "i.bin".into(),
+        path: "image.bin".into(),
         size: 32 * 1024 * 1024,
-        sha256: "b".into(),
+        sha256: "def".into(),
         kind: ImageKind::RawFullChip,
         notes: vec![],
     };
     ctx.validate_image(image, 32 * 1024 * 1024).unwrap();
-    ctx.confirm_recovery("plan".into()).unwrap();
+    ctx.confirm_recovery("external programmer + known good".into()).unwrap();
     ctx.backend_ok = true;
     ctx.authorize_write(&board.exact_identity_string()).unwrap();
-    assert!(matches!(ctx.begin_writing(), Err(BiosToolError::DryRun)));
+    let r = ctx.begin_writing();
+    assert!(matches!(r, Err(bios_tool::domain::BiosToolError::DryRun)));
 }
