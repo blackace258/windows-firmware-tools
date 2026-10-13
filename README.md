@@ -2,6 +2,14 @@
 
 Windows-native tools for SPI BIOS / firmware work.
 
+## Complete sources
+
+**The full, verified source tree is in `windows-firmware-tools.zip`.**
+
+Download / expand that archive for every file (bios-tool, firmware_tool, smbios-tool). The GitHub tree is seeded with core modules; the zip is the authoritative complete package.
+
+See [SOURCES.md](SOURCES.md) for the full file list.
+
 ## Packages
 
 | Folder | Language | Description |
@@ -13,6 +21,7 @@ Windows-native tools for SPI BIOS / firmware work.
 ## Quick start (bios-tool)
 
 ```powershell
+# Expand windows-firmware-tools.zip first
 cd bios-tool
 .\setup_windows.ps1 -Install -Build
 .\target\release\bios-tool.exe doctor
@@ -23,8 +32,6 @@ cargo build --release --features gui --bin bios-tool-gui
 ```
 
 **Safety:** All write/erase paths require exact board identity confirmation phrase, verified same-board backup, and recovery plan. No `--yes` bypass.
-
-Full source archive is available as `windows-firmware-tools.zip`.
 
 ## License
 
